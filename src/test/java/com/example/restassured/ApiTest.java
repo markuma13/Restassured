@@ -1,58 +1,32 @@
 package com.example.restassured;
 
-import com.codeborne.selenide.Configuration;
-import com.codeborne.selenide.Selenide;
-import org.openqa.selenium.chrome.ChromeOptions;
-import com.codeborne.selenide.logevents.SelenideLogger;
-import io.qameta.allure.selenide.AllureSelenide;
-import org.junit.jupiter.api.*;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-import static com.codeborne.selenide.Condition.attribute;
-import static com.codeborne.selenide.Condition.visible;
-import static com.codeborne.selenide.Selenide.*;
+import io.restassured.RestAssured;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import static io.restassured.RestAssured.baseURI;
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.equalTo;
 
 public class ApiTest {
-    MainPage mainPage = new MainPage();
-
-    @BeforeAll
-    public static void setUpAll() {
-        Configuration.browserSize = "1280x800";
-        SelenideLogger.addListener("allure", new AllureSelenide());
-    }
+    protected final int nonexistentPetId = 132;
 
     @BeforeEach
     public void setUp() {
-        // Fix the issue https://github.com/SeleniumHQ/selenium/issues/11750
-        Configuration.browserCapabilities = new ChromeOptions().addArguments("--remote-allow-origins=*");
-        open("https://www.jetbrains.com/");
+        RestAssured.baseURI = "https://petstore.swagger.io/v2/";
     }
 
     @Test
-    public void search() {
-        mainPage.searchButton.click();
+    @DisplayName("Find pet by ID")
+    public void petNotFoundError() {
+        given().when()
+                .get(baseURI + "pet/{id}", nonexistentPetId)
+                .then()
+                .statusCode(404)
+                .statusLine("HTTP/1.1 404 Not Found")
+                .body("code", equalTo(1))
+                .body("type", equalTo("error"))
+                .body("message", equalTo("Pet not found"));
 
-        $("[data-test='search-input']").sendKeys("Selenium");
-        $("button[data-test='full-search-button']").click();
-
-        $("input[data-test='search-input']").shouldHave(attribute("value", "Selenium"));
-    }
-
-    @Test
-    public void toolsMenu() {
-        mainPage.toolsMenu.click();
-
-        $("div[data-test='main-submenu']").shouldBe(visible);
-    }
-
-    @Test
-    public void navigationToAllTools() {
-        mainPage.seeDeveloperToolsButton.click();
-        mainPage.findYourToolsButton.click();
-
-        $("#products-page").shouldBe(visible);
-
-        assertEquals("All Developer Tools and Products by JetBrains", Selenide.title());
     }
 }
